@@ -1,0 +1,810 @@
+<!DOCTYPE html>
+<html lang="sq">
+<head>
+<meta charset="UTF-8">
+<title>Dashboard-Raporti Ditor i Mirembajtjes se Matjeve</title>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+  :root{
+    --bg:#0b1220; --panel:#111a2e; --panel2:#152241; --line:#1f2b4a;
+    --text:#e6ecff; --muted:#9fb0d9; --accent:#4fc3f7; --accent2:#7c4dff;
+    --ok:#22c55e; --warn:#f59e0b; --err:#ef4444;
+    --grad:linear-gradient(135deg,#4fc3f7 0%,#7c4dff 100%);
+  }
+  *{box-sizing:border-box}
+  body{margin:0;font-family:'Segoe UI',Tahoma,sans-serif;background:
+    radial-gradient(1200px 600px at 10% -10%,#1a2550 0%,transparent 60%),
+    radial-gradient(1000px 500px at 100% 0%,#2a1a55 0%,transparent 60%),
+    var(--bg);color:var(--text);min-height:100vh}
+  header{padding:18px 26px;display:flex;justify-content:space-between;
+    align-items:center;border-bottom:1px solid var(--line);
+    background:rgba(17,26,46,.7);backdrop-filter:blur(10px);
+    position:sticky;top:0;z-index:50;flex-wrap:wrap;gap:10px}
+  .brand{display:flex;align-items:center;gap:14px}
+  .logo{width:44px;height:44px;border-radius:12px;background:var(--grad);
+    display:grid;place-items:center;font-weight:800;font-size:20px;color:#fff;
+    box-shadow:0 8px 24px rgba(124,77,255,.4)}
+  h1{margin:0;font-size:20px;letter-spacing:.3px}
+  .sub{color:var(--muted);font-size:12px}
+  .toolbar{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+  .btn{background:var(--grad);border:none;color:#fff;padding:10px 16px;
+    border-radius:10px;font-weight:600;cursor:pointer;
+    box-shadow:0 6px 16px rgba(79,195,247,.25);transition:.2s;font-size:13px}
+  .btn:hover{transform:translateY(-1px);filter:brightness(1.1)}
+  .btn.ghost{background:transparent;border:1px solid var(--line);color:var(--text);box-shadow:none}
+  select,input[type=file]{background:var(--panel2);color:var(--text);
+    border:1px solid var(--line);padding:9px 12px;border-radius:10px;font-size:13px}
+  main{padding:22px 26px;display:grid;gap:18px}
+  .tabs{display:flex;gap:8px;border-bottom:1px solid var(--line);padding-bottom:0;flex-wrap:wrap}
+  .tab{padding:10px 18px;cursor:pointer;color:var(--muted);border-bottom:3px solid transparent;
+    font-weight:600;transition:.2s;font-size:13px;text-transform:uppercase;letter-spacing:.5px}
+  .tab:hover{color:var(--text)}
+  .tab.active{color:var(--accent);border-bottom-color:var(--accent)}
+  .view{display:none}
+  .view.active{display:block}
+  .kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:14px}
+  .kpi{background:var(--panel);border:1px solid var(--line);border-radius:14px;
+    padding:16px;position:relative;overflow:hidden}
+  .kpi::before{content:"";position:absolute;inset:0;background:var(--grad);opacity:.08}
+  .kpi .label{font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.6px}
+  .kpi .value{font-size:28px;font-weight:800;margin-top:6px;position:relative}
+  .kpi .foot{font-size:11px;color:var(--muted);margin-top:6px;position:relative}
+  .kpi .icon{position:absolute;right:14px;top:14px;width:36px;height:36px;
+    border-radius:10px;background:rgba(255,255,255,.06);display:grid;place-items:center;font-size:18px}
+  .grid{display:grid;grid-template-columns:2fr 1fr;gap:18px;margin-top:18px}
+  .grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:18px;margin-top:18px}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-top:18px}
+  @media(max-width:1100px){.grid,.grid3,.grid2{grid-template-columns:1fr}}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:16px}
+  .card h3{margin:0 0 12px;font-size:14px;color:var(--muted);
+    text-transform:uppercase;letter-spacing:.6px;display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap}
+  .chart-wrap{position:relative;height:320px}
+  .chart-wrap.tall{height:420px}
+  table{width:100%;border-collapse:collapse;font-size:13px}
+  th,td{padding:8px 10px;text-align:right;border-bottom:1px solid var(--line)}
+  th:first-child,td:first-child{text-align:left}
+  thead th{background:var(--panel2);color:var(--muted);
+    font-weight:600;text-transform:uppercase;font-size:11px;letter-spacing:.5px;position:sticky;top:0}
+  tbody tr:hover{background:rgba(79,195,247,.06)}
+  .cat{background:linear-gradient(90deg,rgba(124,77,255,.18),transparent);font-weight:700;color:var(--accent)}
+  .totalRow{background:rgba(34,197,94,.1);font-weight:700}
+  .empty{padding:60px 20px;text-align:center;color:var(--muted)}
+  .empty .big{font-size:64px;margin-bottom:10px}
+  .badge{display:inline-block;padding:3px 8px;border-radius:20px;font-size:11px;
+    background:rgba(79,195,247,.15);color:var(--accent);margin-left:8px}
+  .badge.warn{background:rgba(245,158,11,.15);color:var(--warn)}
+  .badge.ok{background:rgba(34,197,94,.15);color:var(--ok)}
+  .badge.err{background:rgba(239,68,68,.15);color:var(--err)}
+  .search{background:var(--panel2);border:1px solid var(--line);color:var(--text);
+    padding:8px 12px;border-radius:8px;font-size:13px;width:220px}
+  .tab-scroll{max-height:460px;overflow:auto}
+  .foot-note{text-align:center;color:var(--muted);font-size:11px;padding:10px}
+  .chip{display:inline-flex;align-items:center;gap:6px;padding:6px 12px;border-radius:20px;
+    background:var(--panel2);border:1px solid var(--line);cursor:pointer;font-size:12px;
+    color:var(--muted);transition:.2s;user-select:none}
+  .chip:hover{color:var(--text);border-color:var(--accent)}
+  .chip.active{background:var(--grad);color:#fff;border-color:transparent;
+    box-shadow:0 4px 12px rgba(79,195,247,.3)}
+  .chip-group{display:flex;flex-wrap:wrap;gap:8px;padding:12px 0}
+  .filter-bar{background:var(--panel);border:1px solid var(--line);border-radius:14px;
+    padding:14px 16px;margin-bottom:0;display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+  .filter-bar .lbl{font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;font-weight:600}
+  .checkbox-list{display:flex;flex-wrap:wrap;gap:6px;max-height:180px;overflow:auto;padding:8px 0}
+  .check-chip{display:inline-flex;align-items:center;gap:6px;padding:5px 10px;
+    background:var(--panel2);border:1px solid var(--line);border-radius:6px;
+    cursor:pointer;font-size:12px;user-select:none;transition:.15s}
+  .check-chip:hover{border-color:var(--accent)}
+  .check-chip.on{background:rgba(79,195,247,.2);border-color:var(--accent);color:var(--accent)}
+  .eff-bar{flex:1;height:6px;background:var(--panel2);border-radius:3px;overflow:hidden;min-width:100px}
+  .eff-bar span{display:block;height:100%;background:var(--grad);border-radius:3px}
+  .coef-cell{color:var(--warn);font-weight:600;font-size:11px}
+  .points-cell{color:var(--ok);font-weight:700}
+  .perf-badge{display:inline-block;padding:4px 10px;border-radius:20px;font-weight:700;font-size:12px}
+  .perf-high{background:rgba(34,197,94,.2);color:var(--ok)}
+  .perf-mid{background:rgba(245,158,11,.2);color:var(--warn)}
+  .perf-low{background:rgba(239,68,68,.2);color:var(--err)}
+  .formula-box{background:var(--panel2);border:1px dashed var(--accent);border-radius:10px;
+    padding:14px 18px;margin:0;font-family:'Consolas',monospace;font-size:13px;color:var(--text);
+    display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+  .formula-box .lbl{color:var(--muted);text-transform:uppercase;font-size:11px;letter-spacing:.5px}
+  .formula-box code{color:var(--accent);background:rgba(79,195,247,.1);padding:2px 8px;border-radius:4px}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="brand">
+    <div class="logo">⚡</div>
+    <div>
+      <h1>Dashboard Inxhinierik <span class="badge" id="sheetBadge">-</span></h1>
+      <div class="sub">Analiza e raportit ditor · Distriktet operative</div>
+    </div>
+  </div>
+  <div class="toolbar">
+    <input type="file" id="fileInput" accept=".xlsx,.xls,.csv"/>
+    <select id="sheetSelect" style="display:none"></select>
+    <button class="btn ghost" id="exportBtn">⤓ Eksporto PDF</button>
+  </div>
+</header>
+
+<main id="app">
+  <div class="card empty" id="empty">
+    <div class="big">📊</div>
+    <h2>Importo skedarin Excel për të filluar</h2>
+    <p>Kliko "Choose File" dhe zgjidh raportin (.xlsx).</p>
+  </div>
+
+  <div id="dashboard" style="display:none;">
+    <div class="tabs">
+      <div class="tab active" data-view="daily">📅 Raporti Ditor</div>
+      <div class="tab" data-view="compare">📈 Krahasim Ditësh</div>
+      <div class="tab" data-view="efficiency">⚙️ Performanca & Efikasiteti</div>
+    </div>
+
+    <!-- VIEW 1 -->
+    <div class="view active" id="view-daily">
+      <div class="filter-bar" style="margin:16px 0">
+        <span class="lbl">🎯 Filter Distrikti:</span>
+        <div class="chip-group" id="districtFilter"></div>
+      </div>
+
+      <section class="kpis" id="kpis"></section>
+
+      <section class="grid">
+        <div class="card">
+          <h3>Totali sipas Distriktit <span class="badge" id="distCount">0 distrikte</span></h3>
+          <div class="chart-wrap"><canvas id="chartDist"></canvas></div>
+        </div>
+        <div class="card">
+          <h3>Shpërndarja sipas Kategorisë</h3>
+          <div class="chart-wrap"><canvas id="chartCat"></canvas></div>
+        </div>
+      </section>
+
+      <section class="grid3">
+        <div class="card">
+          <h3>Top 8 Aktivitetet</h3>
+          <div class="chart-wrap"><canvas id="chartTop"></canvas></div>
+        </div>
+        <div class="card">
+          <h3>Kategoritë × Distriktet</h3>
+          <div class="chart-wrap"><canvas id="chartStack"></canvas></div>
+        </div>
+        <div class="card">
+          <h3>Performanca për Distrikt <span class="badge warn" id="perfBadge">—</span></h3>
+          <div class="chart-wrap"><canvas id="chartPerf"></canvas></div>
+        </div>
+      </section>
+
+      <section class="card" style="margin-top:18px">
+        <h3>Detajet e plota · Distriktet
+          <input type="text" id="search" class="search" placeholder="🔍 Kërko aktivitet..."/></h3>
+        <div class="tab-scroll"><table id="detailTable"></table></div>
+      </section>
+    </div>
+
+    <!-- VIEW 2 -->
+    <div class="view" id="view-compare">
+      <div class="filter-bar" style="margin:16px 0;flex-direction:column;align-items:stretch">
+        <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px">
+          <span class="lbl">📅 Zgjidh ditët për krahasim:</span>
+          <div>
+            <button class="btn ghost" id="selectAllDays">✓ Zgjidh të gjitha</button>
+            <button class="btn ghost" id="clearAllDays">✗ Pastro</button>
+          </div>
+        </div>
+        <div class="checkbox-list" id="dayList"></div>
+        <div style="display:flex;gap:14px;align-items:center;flex-wrap:wrap">
+          <span class="lbl">Distrikti:</span>
+          <select id="cmpDistrict"><option value="__ALL__">Të gjitha (total)</option></select>
+          <span class="lbl">Metrika:</span>
+          <select id="cmpMetric">
+            <option value="total">Totali i rasteve</option>
+            <option value="points">Pikët (raste × koef.)</option>
+            <option value="performance">Performanca (pikë/ekip)</option>
+            <option value="komercial">KOMERCIAL (raste)</option>
+            <option value="trafo">TRAFOREGJIONE (raste)</option>
+            <option value="direkt">DIREKT (raste)</option>
+            <option value="ekipe">Numri i ekipeve</option>
+          </select>
+        </div>
+      </div>
+
+      <section class="kpis" id="cmpKpis"></section>
+
+      <div class="grid2">
+        <div class="card">
+          <h3>Trendi ditor <span class="badge" id="cmpDaysBadge">0 ditë</span></h3>
+          <div class="chart-wrap tall"><canvas id="chartTrend"></canvas></div>
+        </div>
+        <div class="card">
+          <h3>Krahasim sipas Distriktit</h3>
+          <div class="chart-wrap tall"><canvas id="chartCmpDist"></canvas></div>
+        </div>
+      </div>
+
+      <div class="card" style="margin-top:18px">
+        <h3>Tabela përmbledhëse</h3>
+        <div class="tab-scroll"><table id="cmpTable"></table></div>
+      </div>
+    </div>
+
+    <!-- VIEW 3 -->
+    <div class="view" id="view-efficiency">
+      <div class="formula-box" style="margin:16px 0">
+        <span class="lbl">📐 Formula:</span>
+        <span><b>Pikët për aktivitet</b> = <code>Raste × Koeficient (S)</code></span>
+        <span>→</span>
+        <span><b>Performanca e distriktit</b> = <code>Σ Pikët ÷ Numri i ekipeve</code></span>
+      </div>
+
+      <section class="kpis" id="effKpis"></section>
+
+      <div class="grid2">
+        <div class="card">
+          <h3>Performanca për Distrikt (pikë/ekip)</h3>
+          <div class="chart-wrap tall"><canvas id="chartEff"></canvas></div>
+        </div>
+        <div class="card">
+          <h3>Pikët e Realizuara vs. Ekipet</h3>
+          <div class="chart-wrap tall"><canvas id="chartRvE"></canvas></div>
+        </div>
+      </div>
+
+      <div class="card" style="margin-top:18px">
+        <h3>📋 Tabela e Performancës · Pikët për Distrikt</h3>
+        <div class="tab-scroll"><table id="effTable"></table></div>
+      </div>
+
+      <div class="card" style="margin-top:18px">
+        <h3>🔬 Detajet e Pikëve për çdo Aktivitet
+          <span class="badge" id="coefBadge">koeficientet nga kolona S</span></h3>
+        <div class="tab-scroll"><table id="pointsTable"></table></div>
+      </div>
+
+      <div class="card" style="margin-top:18px">
+        <h3>📊 Trendi i Performancës ndër ditë</h3>
+        <div class="chart-wrap tall"><canvas id="chartEffTrend"></canvas></div>
+      </div>
+    </div>
+  </div>
+  <div class="foot-note">Dashboard v4.0 · Weighted Performance Scoring · Koeficientet nga kolona S</div>
+</main>
+
+<script>
+let workbook=null, currentData=null, allDaysData={}, charts={};
+let activeDistrict='__ALL__';
+let globalCoefficients={}; // {activityName: coefficient} - nga sheet 01.07.2026 kolona S
+const DIST_KEYS=['DPR','DMI','DPE','DPZ','DFE','DGL','DGJ'];
+
+document.getElementById('fileInput').addEventListener('change',handleFile);
+document.getElementById('sheetSelect').addEventListener('change',e=>loadSheet(e.target.value));
+document.getElementById('search').addEventListener('input',e=>filterTable(e.target.value));
+document.getElementById('exportBtn').addEventListener('click',()=>window.print());
+document.querySelectorAll('.tab').forEach(t=>t.addEventListener('click',()=>{
+  document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));
+  document.querySelectorAll('.view').forEach(x=>x.classList.remove('active'));
+  t.classList.add('active');
+  document.getElementById('view-'+t.dataset.view).classList.add('active');
+  if(t.dataset.view==='compare') renderCompare();
+  if(t.dataset.view==='efficiency') renderEfficiency();
+}));
+document.getElementById('selectAllDays').addEventListener('click',()=>{
+  document.querySelectorAll('#dayList .check-chip').forEach(c=>c.classList.add('on'));
+  renderCompare();
+});
+document.getElementById('clearAllDays').addEventListener('click',()=>{
+  document.querySelectorAll('#dayList .check-chip').forEach(c=>c.classList.remove('on'));
+  renderCompare();
+});
+document.getElementById('cmpDistrict').addEventListener('change',renderCompare);
+document.getElementById('cmpMetric').addEventListener('change',renderCompare);
+
+function handleFile(e){
+  const f=e.target.files[0]; if(!f) return;
+  const r=new FileReader();
+  r.onload=ev=>{
+    const data=new Uint8Array(ev.target.result);
+    workbook=XLSX.read(data,{type:'array'});
+    
+    // HAPI 1: Ekstrakto koeficientet nga sheet-i i parë ditor (kolona S = index 18)
+    globalCoefficients={};
+    const firstDated=workbook.SheetNames.find(n=>/\d{2}\.\d{2}\.\d{4}/.test(n));
+    if(firstDated){
+      extractCoefficients(workbook.Sheets[firstDated]);
+    }
+    
+    // HAPI 2: Parso të gjitha fletët ditore
+    allDaysData={};
+    workbook.SheetNames.forEach(name=>{
+      if(/\d{2}\.\d{2}\.\d{4}/.test(name)){
+        const ws=workbook.Sheets[name];
+        const rows=XLSX.utils.sheet_to_json(ws,{header:1,defval:null,blankrows:false});
+        allDaysData[name]=parseReport(rows,name);
+      }
+    });
+    
+    const sel=document.getElementById('sheetSelect');
+    sel.innerHTML=''; sel.style.display='inline-block';
+    workbook.SheetNames.forEach(n=>{
+      const o=document.createElement('option'); o.value=n; o.textContent=n; sel.appendChild(o);
+    });
+    const preferred=firstDated||workbook.SheetNames[0];
+    sel.value=preferred;
+    buildDayList();
+    loadSheet(preferred);
+  };
+  r.readAsArrayBuffer(f);
+}
+
+// Ekstraktimi i koeficientëve nga kolona S (index 18)
+function extractCoefficients(ws){
+  const rows=XLSX.utils.sheet_to_json(ws,{header:1,defval:null,blankrows:false});
+  const nameCol=1; // kolona B
+  const coefCol=18; // kolona S
+  for(let i=0;i<rows.length;i++){
+    const r=rows[i]; if(!r) continue;
+    const name=String(r[nameCol]||'').trim();
+    if(!name) continue;
+    const raw=r[coefCol];
+    if(raw==null) continue;
+    // Nëse është "x0.75" ose "x1" apo "x2.25"
+    const str=String(raw).trim().toLowerCase().replace('x','').replace(',','.');
+    const num=parseFloat(str);
+    if(!isNaN(num)){
+      globalCoefficients[name]=num;
+    }
+  }
+}
+
+function loadSheet(name){
+  let d=allDaysData[name];
+  if(!d){
+    const ws=workbook.Sheets[name];
+    const rows=XLSX.utils.sheet_to_json(ws,{header:1,defval:null,blankrows:false});
+    d=parseReport(rows,name);
+  }
+  currentData=d;
+  document.getElementById('sheetBadge').textContent=name;
+  document.getElementById('empty').style.display='none';
+  document.getElementById('dashboard').style.display='block';
+  buildDistrictFilter();
+  activeDistrict='__ALL__';
+  render(currentData);
+  if(document.querySelector('.tab.active').dataset.view==='efficiency') renderEfficiency();
+}
+
+function parseReport(rows,sheetName){
+  let headerRow=-1, distCols=[], perfCols=[];
+  for(let i=0;i<Math.min(rows.length,15);i++){
+    const r=rows[i]||[];
+    const found=[];
+    r.forEach((c,idx)=>{
+      const v=String(c||'').trim().toUpperCase();
+      if(DIST_KEYS.includes(v)) found.push({name:v,idx});
+    });
+    if(found.length>=DIST_KEYS.length){
+      headerRow=i;
+      distCols=found.slice(0,7);
+      perfCols=found.slice(7,14);
+      break;
+    }
+    if(found.length>=3 && headerRow<0){
+      headerRow=i; distCols=found; perfCols=[];
+    }
+  }
+  if(headerRow<0) return {distrikte:[],perfCols:[],kategorite:[],rows:[],ekipeRow:null,perfRow:null,sheetName};
+
+  const nameCol=1;
+  const kategorite=[]; const items=[]; let currentCat='PA KATEGORI';
+  let ekipeRow=null, perfRow=null;
+
+  for(let i=headerRow+1;i<rows.length;i++){
+    const r=rows[i]; if(!r) continue;
+    const name=String(r[nameCol]||'').trim();
+    if(!name) continue;
+    const upperName=name.toUpperCase();
+
+    if(upperName.includes('NUMRI I EKIPE') || upperName.includes('EKIPE')){
+      ekipeRow={}; distCols.forEach(dc=>ekipeRow[dc.name]=Number(r[dc.idx])||0);
+      perfRow={}; perfCols.forEach(pc=>perfRow[pc.name]=Number(r[pc.idx])||0);
+      continue;
+    }
+
+    const hasNums=distCols.some(dc=>typeof r[dc.idx]==='number' && r[dc.idx]!==0);
+    const allEmpty=distCols.every(dc=>r[dc.idx]===null || r[dc.idx]===undefined || r[dc.idx]==='');
+    if((allEmpty || (!hasNums && upperName===name)) &&
+       ['KOMERCIAL','TRAFOREGJIONE','DIREKT'].some(k=>upperName.includes(k))){
+      currentCat=name;
+      if(!kategorite.includes(name)) kategorite.push(name);
+      continue;
+    }
+    if(upperName.startsWith('TOTAL')) continue;
+
+    const values={}; distCols.forEach(dc=>values[dc.name]=Number(r[dc.idx])||0);
+    // Merr koeficientin nga globalCoefficients (nëse ekziston)
+    const coefficient=globalCoefficients[name]!==undefined?globalCoefficients[name]:1;
+    // Kalkulo pikët për çdo distrikt
+    const points={};
+    distCols.forEach(dc=>points[dc.name]=values[dc.name]*coefficient);
+    const total=Object.values(values).reduce((a,b)=>a+b,0);
+    const totalPoints=Object.values(points).reduce((a,b)=>a+b,0);
+    items.push({category:currentCat,name,values,points,coefficient,total,totalPoints});
+  }
+  return {distrikte:distCols.map(d=>d.name),perfCols:perfCols.map(d=>d.name),
+    kategorite,rows:items,ekipeRow,perfRow,sheetName};
+}
+
+// ---------- DAILY ----------
+const palette=['#4fc3f7','#7c4dff','#22c55e','#f59e0b','#ef4444','#ec4899','#14b8a6','#a855f7'];
+
+function buildDistrictFilter(){
+  const d=currentData;
+  const box=document.getElementById('districtFilter');
+  const chips=[{v:'__ALL__',t:'🌐 Të gjitha'},...d.distrikte.map(x=>({v:x,t:x}))];
+  box.innerHTML=chips.map(c=>`<span class="chip ${c.v===activeDistrict?'active':''}" data-v="${c.v}">${c.t}</span>`).join('');
+  box.querySelectorAll('.chip').forEach(ch=>ch.addEventListener('click',()=>{
+    activeDistrict=ch.dataset.v; buildDistrictFilter(); render(currentData);
+  }));
+}
+
+function render(d){
+  renderKPIs(d);
+  renderCharts(d);
+  renderTable(d);
+  document.getElementById('distCount').textContent=d.distrikte.length+' distrikte';
+  document.getElementById('perfBadge').textContent='pikë/ekip';
+}
+
+function activeDistricts(d){return activeDistrict==='__ALL__'?d.distrikte:[activeDistrict];}
+
+function calcPerformance(d,dist){
+  const totalPoints=d.rows.reduce((a,r)=>a+(r.points[dist]||0),0);
+  const teams=d.ekipeRow?(d.ekipeRow[dist]||0):0;
+  return teams?+(totalPoints/teams).toFixed(3):0;
+}
+
+function renderKPIs(d){
+  const dists=activeDistricts(d);
+  const totalAll=d.rows.reduce((a,r)=>a+dists.reduce((s,x)=>s+(r.values[x]||0),0),0);
+  const totalPoints=d.rows.reduce((a,r)=>a+dists.reduce((s,x)=>s+(r.points[x]||0),0),0);
+  const distPerfs=dists.map(dep=>({dep,val:calcPerformance(d,dep)}));
+  const topPerf=distPerfs.slice().sort((a,b)=>b.val-a.val)[0]||{dep:'-',val:0};
+  const totalEkipe=d.ekipeRow?dists.reduce((a,x)=>a+(d.ekipeRow[x]||0),0):0;
+  const avgPerf=totalEkipe?(totalPoints/totalEkipe).toFixed(2):'-';
+
+  const kpis=[
+    {label:'Totali i Rasteve',value:totalAll.toLocaleString(),icon:'📈',
+      foot:activeDistrict==='__ALL__'?`${d.rows.length} aktivitete`:`Filter: ${activeDistrict}`},
+    {label:'Pikët e Realizuara',value:totalPoints.toFixed(2),icon:'⭐',foot:'raste × koeficient'},
+    {label:'Totali i Ekipeve',value:totalEkipe||'-',icon:'👷',foot:'në terren'},
+    {label:'Performanca Mesatare',value:avgPerf,icon:'⚙️',foot:'pikë/ekip'},
+    {label:'Distrikti Kryesues',value:topPerf.dep,icon:'🏆',foot:topPerf.val+' pikë/ekip'}
+  ];
+  document.getElementById('kpis').innerHTML=kpis.map(k=>`
+    <div class="kpi"><div class="icon">${k.icon}</div>
+      <div class="label">${k.label}</div><div class="value">${k.value}</div>
+      <div class="foot">${k.foot}</div></div>`).join('');
+}
+
+function renderCharts(d){
+  ['dist','cat','top','stack','perf'].forEach(k=>charts[k]&&charts[k].destroy());
+  Chart.defaults.color='#9fb0d9';
+  Chart.defaults.borderColor='rgba(255,255,255,0.06)';
+  const dists=activeDistricts(d);
+
+  const distTotals=dists.map(dep=>d.rows.reduce((a,r)=>a+(r.values[dep]||0),0));
+  charts.dist=new Chart(document.getElementById('chartDist'),{
+    type:'bar',data:{labels:dists,datasets:[{data:distTotals,
+      backgroundColor:dists.map((_,i)=>palette[i%palette.length]),borderRadius:8}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{y:{beginAtZero:true}}}});
+
+  const catTotals=d.kategorite.map(c=>d.rows.filter(r=>r.category===c)
+    .reduce((a,r)=>a+dists.reduce((s,x)=>s+(r.values[x]||0),0),0));
+  charts.cat=new Chart(document.getElementById('chartCat'),{
+    type:'doughnut',data:{labels:d.kategorite,datasets:[{data:catTotals,
+      backgroundColor:palette.slice(0,d.kategorite.length),borderWidth:2,borderColor:'#111a2e'}]},
+    options:{responsive:true,maintainAspectRatio:false,cutout:'60%',plugins:{legend:{position:'bottom'}}}});
+
+  const top=d.rows.slice().map(r=>({...r,ft:dists.reduce((s,x)=>s+(r.values[x]||0),0)}))
+    .sort((a,b)=>b.ft-a.ft).slice(0,8);
+  charts.top=new Chart(document.getElementById('chartTop'),{
+    type:'bar',data:{labels:top.map(t=>t.name.length>25?t.name.slice(0,25)+'…':t.name),
+      datasets:[{data:top.map(t=>t.ft),backgroundColor:top.map((_,i)=>palette[i%palette.length]),borderRadius:6}]},
+    options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}}}});
+
+  charts.stack=new Chart(document.getElementById('chartStack'),{
+    type:'bar',data:{labels:dists,datasets:d.kategorite.map((cat,i)=>({label:cat,
+      data:dists.map(dep=>d.rows.filter(r=>r.category===cat).reduce((a,r)=>a+(r.values[dep]||0),0)),
+      backgroundColor:palette[i%palette.length]}))},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom',labels:{boxWidth:12}}},
+      scales:{x:{stacked:true},y:{stacked:true,beginAtZero:true}}}});
+
+  // Performance radar
+  const perfDists=activeDistrict==='__ALL__'?d.distrikte:[activeDistrict];
+  const perfVals=perfDists.map(x=>calcPerformance(d,x));
+  charts.perf=new Chart(document.getElementById('chartPerf'),{
+    type:'radar',data:{labels:perfDists,datasets:[{label:'Pikë/Ekip',data:perfVals,
+      backgroundColor:'rgba(245,158,11,0.25)',borderColor:'#f59e0b',pointBackgroundColor:'#f59e0b',borderWidth:2}]},
+    options:{responsive:true,maintainAspectRatio:false,
+      scales:{r:{beginAtZero:true,ticks:{color:'#9fb0d9',backdropColor:'transparent'}}},
+      plugins:{legend:{display:false}}}});
+}
+
+function renderTable(d){
+  const dists=activeDistricts(d);
+  const t=document.getElementById('detailTable');
+  let html=`<thead><tr><th>Aktiviteti</th><th>Koef.</th>${dists.map(x=>`<th>${x}</th>`).join('')}<th>Totali</th></tr></thead><tbody>`;
+  d.kategorite.forEach(cat=>{
+    html+=`<tr class="cat"><td colspan="${dists.length+3}">▸ ${cat}</td></tr>`;
+    const items=d.rows.filter(r=>r.category===cat);
+    items.forEach(r=>{
+      const sub=dists.reduce((s,x)=>s+(r.values[x]||0),0);
+      html+=`<tr data-name="${r.name.toLowerCase()}"><td>${r.name}</td>
+        <td class="coef-cell">×${r.coefficient}</td>
+        ${dists.map(dep=>`<td>${(r.values[dep]||0).toLocaleString()}</td>`).join('')}
+        <td><b>${sub.toLocaleString()}</b></td></tr>`;
+    });
+    const subtot=dists.map(dep=>items.reduce((a,r)=>a+(r.values[dep]||0),0));
+    html+=`<tr class="totalRow"><td>Nëntotali ${cat}</td><td></td>
+      ${subtot.map(v=>`<td>${v.toLocaleString()}</td>`).join('')}
+      <td>${subtot.reduce((a,b)=>a+b,0).toLocaleString()}</td></tr>`;
+  });
+  const grand=dists.map(dep=>d.rows.reduce((a,r)=>a+(r.values[dep]||0),0));
+  html+=`<tr class="totalRow" style="background:rgba(79,195,247,.18)">
+    <td>TOTAL I PËRGJITHSHËM</td><td></td>
+    ${grand.map(v=>`<td>${v.toLocaleString()}</td>`).join('')}
+    <td>${grand.reduce((a,b)=>a+b,0).toLocaleString()}</td></tr>`;
+  // Pikët totale
+  const totalPts=dists.map(dep=>d.rows.reduce((a,r)=>a+(r.points[dep]||0),0));
+  html+=`<tr class="totalRow" style="background:rgba(34,197,94,.15)">
+    <td>⭐ PIKËT TOTALE (raste × koef.)</td><td></td>
+    ${totalPts.map(v=>`<td class="points-cell">${v.toFixed(2)}</td>`).join('')}
+    <td class="points-cell">${totalPts.reduce((a,b)=>a+b,0).toFixed(2)}</td></tr>`;
+  if(d.ekipeRow){
+    html+=`<tr class="totalRow" style="background:rgba(245,158,11,.15)">
+      <td>👷 Numri i ekipeve</td><td></td>
+      ${dists.map(dep=>`<td>${(d.ekipeRow[dep]||0).toLocaleString()}</td>`).join('')}
+      <td>${dists.reduce((a,x)=>a+(d.ekipeRow[x]||0),0).toLocaleString()}</td></tr>`;
+    // Performanca (pikë/ekip)
+    const perfs=dists.map(dep=>calcPerformance(d,dep));
+    html+=`<tr class="totalRow" style="background:rgba(124,77,255,.18)">
+      <td>⚙️ PERFORMANCA (pikë/ekip)</td><td></td>
+      ${perfs.map(v=>`<td><b style="color:#a855f7">${v}</b></td>`).join('')}
+      <td>—</td></tr>`;
+  }
+  html+='</tbody>';
+  t.innerHTML=html;
+}
+
+function filterTable(q){
+  q=q.toLowerCase();
+  document.querySelectorAll('#detailTable tbody tr[data-name]').forEach(tr=>{
+    tr.style.display=tr.dataset.name.includes(q)?'':'none';
+  });
+}
+
+// ---------- COMPARE ----------
+function buildDayList(){
+  const days=Object.keys(allDaysData).sort();
+  const list=document.getElementById('dayList');
+  list.innerHTML=days.map(d=>`<span class="check-chip on" data-day="${d}">📅 ${d}</span>`).join('');
+  list.querySelectorAll('.check-chip').forEach(ch=>ch.addEventListener('click',()=>{
+    ch.classList.toggle('on');renderCompare();
+  }));
+  const distSel=document.getElementById('cmpDistrict');
+  const firstDay=allDaysData[days[0]];
+  if(firstDay){
+    distSel.innerHTML='<option value="__ALL__">Të gjitha (total)</option>'+
+      firstDay.distrikte.map(x=>`<option value="${x}">${x}</option>`).join('');
+  }
+}
+
+function getSelectedDays(){
+  return Array.from(document.querySelectorAll('#dayList .check-chip.on')).map(c=>c.dataset.day).sort();
+}
+
+function metricValue(dayData,metric,district){
+  if(!dayData) return 0;
+  const dists=district==='__ALL__'?dayData.distrikte:[district];
+  if(metric==='ekipe'){
+    return dayData.ekipeRow?dists.reduce((a,x)=>a+(dayData.ekipeRow[x]||0),0):0;
+  }
+  if(metric==='points'){
+    return dayData.rows.reduce((a,r)=>a+dists.reduce((s,x)=>s+(r.points[x]||0),0),0);
+  }
+  if(metric==='performance'){
+    const pts=dayData.rows.reduce((a,r)=>a+dists.reduce((s,x)=>s+(r.points[x]||0),0),0);
+    const tm=dayData.ekipeRow?dists.reduce((a,x)=>a+(dayData.ekipeRow[x]||0),0):0;
+    return tm?+(pts/tm).toFixed(3):0;
+  }
+  let rows=dayData.rows;
+  if(metric==='komercial') rows=rows.filter(r=>r.category.toUpperCase().includes('KOMERCIAL'));
+  else if(metric==='trafo') rows=rows.filter(r=>r.category.toUpperCase().includes('TRAFOR'));
+  else if(metric==='direkt') rows=rows.filter(r=>r.category.toUpperCase().includes('DIREKT'));
+  return rows.reduce((a,r)=>a+dists.reduce((s,x)=>s+(r.values[x]||0),0),0);
+}
+
+function renderCompare(){
+  const days=getSelectedDays();
+  const district=document.getElementById('cmpDistrict').value;
+  const metric=document.getElementById('cmpMetric').value;
+  document.getElementById('cmpDaysBadge').textContent=days.length+' ditë';
+
+  if(!days.length){
+    document.getElementById('cmpKpis').innerHTML='<div class="card empty">Zgjidh të paktën një ditë</div>';
+    ['trend','cmpDist'].forEach(k=>charts[k]&&charts[k].destroy());
+    document.getElementById('cmpTable').innerHTML='';
+    return;
+  }
+
+  const values=days.map(d=>metricValue(allDaysData[d],metric,district));
+  const totalSum=values.reduce((a,b)=>a+b,0);
+  const avg=(totalSum/days.length);
+  const max=Math.max(...values); const min=Math.min(...values);
+  const bestDay=days[values.indexOf(max)];
+  const worstDay=days[values.indexOf(min)];
+
+  document.getElementById('cmpKpis').innerHTML=[
+    {l:'Ditë të krahasuara',v:days.length,i:'📅',f:days[0]+' → '+days[days.length-1]},
+    {l:'Totali/Suma',v:totalSum.toLocaleString(undefined,{maximumFractionDigits:2}),i:'∑',f:'Metrika: '+metric},
+    {l:'Mesatarja ditore',v:avg.toFixed(2),i:'📊',f:'për ditë'},
+    {l:'Dita më e mirë',v:bestDay,i:'🏆',f:max.toLocaleString(undefined,{maximumFractionDigits:2})},
+    {l:'Dita më e ulët',v:worstDay,i:'📉',f:min.toLocaleString(undefined,{maximumFractionDigits:2})}
+  ].map(k=>`<div class="kpi"><div class="icon">${k.i}</div>
+    <div class="label">${k.l}</div><div class="value">${k.v}</div>
+    <div class="foot">${k.f}</div></div>`).join('');
+
+  ['trend','cmpDist'].forEach(k=>charts[k]&&charts[k].destroy());
+
+  charts.trend=new Chart(document.getElementById('chartTrend'),{
+    type:'line',data:{labels:days,datasets:[{label:metric+(district!=='__ALL__'?' · '+district:''),
+      data:values,borderColor:'#4fc3f7',backgroundColor:'rgba(79,195,247,0.15)',
+      fill:true,tension:.3,pointBackgroundColor:'#7c4dff',pointRadius:5,pointHoverRadius:7,borderWidth:3}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'top'}},scales:{y:{beginAtZero:true}}}});
+
+  const dists=allDaysData[days[0]].distrikte;
+  charts.cmpDist=new Chart(document.getElementById('chartCmpDist'),{
+    type:'bar',data:{labels:dists,datasets:days.map((day,i)=>({
+      label:day,data:dists.map(dep=>metricValue(allDaysData[day],metric,dep)),
+      backgroundColor:palette[i%palette.length]}))},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom',labels:{boxWidth:12}}},
+      scales:{y:{beginAtZero:true}}}});
+
+  let html=`<thead><tr><th>Data</th>${dists.map(x=>`<th>${x}</th>`).join('')}<th>Totali</th></tr></thead><tbody>`;
+  days.forEach(day=>{
+    const rowVals=dists.map(dep=>metricValue(allDaysData[day],metric,dep));
+    const rowTotal=rowVals.reduce((a,b)=>a+b,0);
+    html+=`<tr><td>📅 ${day}</td>${rowVals.map(v=>`<td>${v.toLocaleString(undefined,{maximumFractionDigits:2})}</td>`).join('')}
+      <td><b>${rowTotal.toLocaleString(undefined,{maximumFractionDigits:2})}</b></td></tr>`;
+  });
+  const colSum=dists.map(dep=>days.reduce((a,day)=>a+metricValue(allDaysData[day],metric,dep),0));
+  html+=`<tr class="totalRow"><td>∑ TOTAL</td>${colSum.map(v=>`<td>${v.toLocaleString(undefined,{maximumFractionDigits:2})}</td>`).join('')}
+    <td>${colSum.reduce((a,b)=>a+b,0).toLocaleString(undefined,{maximumFractionDigits:2})}</td></tr></tbody>`;
+  document.getElementById('cmpTable').innerHTML=html;
+}
+
+// ---------- EFFICIENCY & PERFORMANCE ----------
+function perfClass(v,max){
+  const p=max?v/max:0;
+  if(p>=0.75) return 'perf-high';
+  if(p>=0.4) return 'perf-mid';
+  return 'perf-low';
+}
+
+function renderEfficiency(){
+  const d=currentData; if(!d) return;
+  ['eff','rve','effTrend'].forEach(k=>charts[k]&&charts[k].destroy());
+  const dists=d.distrikte;
+
+  // PIKËT për çdo distrikt (Σ raste × koef.)
+  const points=dists.map(dep=>d.rows.reduce((a,r)=>a+(r.points[dep]||0),0));
+  const teams=dists.map(dep=>d.ekipeRow?(d.ekipeRow[dep]||0):0);
+  const cases=dists.map(dep=>d.rows.reduce((a,r)=>a+(r.values[dep]||0),0));
+  // PERFORMANCA = Pikët / Ekipet
+  const perfs=dists.map((_,i)=>teams[i]?+(points[i]/teams[i]).toFixed(2):0);
+
+  const totalPoints=points.reduce((a,b)=>a+b,0);
+  const totalTeams=teams.reduce((a,b)=>a+b,0);
+  const totalCases=cases.reduce((a,b)=>a+b,0);
+  const avgPerf=totalTeams?(totalPoints/totalTeams).toFixed(2):'-';
+  const maxPerf=Math.max(...perfs);
+  const bestIdx=perfs.indexOf(maxPerf);
+  const nonZero=perfs.filter(x=>x>0);
+  const minPerf=nonZero.length?Math.min(...nonZero):0;
+  const worstIdx=perfs.indexOf(minPerf);
+
+  document.getElementById('effKpis').innerHTML=[
+    {l:'Performanca Mesatare',v:avgPerf,i:'⚙️',f:'pikë/ekip (të gjithë distriktet)'},
+    {l:'Distrikti më efikas',v:dists[bestIdx]||'-',i:'🏆',f:maxPerf+' pikë/ekip'},
+    {l:'Distrikti më i dobët',v:dists[worstIdx]||'-',i:'⚠️',f:minPerf+' pikë/ekip'},
+    {l:'Pikët Totale',v:totalPoints.toFixed(2),i:'⭐',f:totalCases+' raste × koef.'},
+    {l:'Totali i Ekipeve',v:totalTeams,i:'👷',f:'në terren sot'}
+  ].map(k=>`<div class="kpi"><div class="icon">${k.i}</div>
+    <div class="label">${k.l}</div><div class="value">${k.v}</div>
+    <div class="foot">${k.f}</div></div>`).join('');
+
+  charts.eff=new Chart(document.getElementById('chartEff'),{
+    type:'bar',data:{labels:dists,datasets:[{label:'Pikë/Ekip',data:perfs,
+      backgroundColor:dists.map((_,i)=>palette[i%palette.length]),borderRadius:8}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},
+      tooltip:{callbacks:{label:c=>' Performanca: '+c.parsed.y+' pikë/ekip'}}},
+      scales:{y:{beginAtZero:true}}}});
+
+  charts.rve=new Chart(document.getElementById('chartRvE'),{
+    type:'bar',data:{labels:dists,datasets:[
+      {label:'Pikët e realizuara',data:points.map(p=>+p.toFixed(2)),backgroundColor:'#22c55e',borderRadius:6,yAxisID:'y'},
+      {label:'Ekipe',data:teams,backgroundColor:'#f59e0b',borderRadius:6,yAxisID:'y1'}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom'}},
+      scales:{y:{beginAtZero:true,position:'left',title:{display:true,text:'Pikët'}},
+        y1:{beginAtZero:true,position:'right',title:{display:true,text:'Ekipet'},grid:{drawOnChartArea:false}}}}});
+
+  // TABELA E PERFORMANCËS
+  let html=`<thead><tr><th>Distrikti</th><th>Raste</th><th>Pikët (Σ raste×koef)</th><th>Ekipe</th>
+    <th>Performanca (pikë/ekip)</th><th style="min-width:180px">Barometri</th><th>Statusi</th></tr></thead><tbody>`;
+  const maxP=Math.max(...perfs,1);
+  dists.forEach((dep,i)=>{
+    const pct=Math.round((perfs[i]/maxP)*100);
+    const cls=perfClass(perfs[i],maxP);
+    const status=cls==='perf-high'?'✓ Shkëlqyeshëm':(cls==='perf-mid'?'~ Mesatar':'⚠ I ulët');
+    html+=`<tr><td><b>${dep}</b></td>
+      <td>${cases[i].toLocaleString()}</td>
+      <td class="points-cell">${points[i].toFixed(2)}</td>
+      <td>${teams[i]}</td>
+      <td><b style="color:var(--accent);font-size:15px">${perfs[i]}</b></td>
+      <td><div class="eff-bar"><span style="width:${pct}%"></span></div></td>
+      <td><span class="perf-badge ${cls}">${status}</span></td></tr>`;
+  });
+  html+=`<tr class="totalRow"><td>TOTAL</td>
+    <td>${totalCases.toLocaleString()}</td>
+    <td class="points-cell">${totalPoints.toFixed(2)}</td>
+    <td>${totalTeams}</td><td><b>${avgPerf}</b></td><td>—</td><td>—</td></tr></tbody>`;
+  document.getElementById('effTable').innerHTML=html;
+
+  // TABELA E DETAJEVE TË PIKËVE
+  const pt=document.getElementById('pointsTable');
+  let phtml=`<thead><tr><th>Aktiviteti</th><th>Koef.</th>
+    ${dists.map(x=>`<th colspan="2">${x}</th>`).join('')}</tr>
+    <tr><th></th><th></th>
+    ${dists.map(()=>`<th style="font-size:10px">raste</th><th style="font-size:10px;color:var(--ok)">pikë</th>`).join('')}
+    </tr></thead><tbody>`;
+  d.kategorite.forEach(cat=>{
+    phtml+=`<tr class="cat"><td colspan="${dists.length*2+2}">▸ ${cat}</td></tr>`;
+    d.rows.filter(r=>r.category===cat).forEach(r=>{
+      phtml+=`<tr><td>${r.name}</td><td class="coef-cell">×${r.coefficient}</td>
+        ${dists.map(dep=>`<td>${(r.values[dep]||0)}</td>
+          <td class="points-cell">${(r.points[dep]||0).toFixed(2)}</td>`).join('')}</tr>`;
+    });
+  });
+  phtml+=`<tr class="totalRow"><td>Σ TOTAL PIKËSH</td><td></td>
+    ${dists.map(dep=>{
+      const p=d.rows.reduce((a,r)=>a+(r.points[dep]||0),0);
+      const c=d.rows.reduce((a,r)=>a+(r.values[dep]||0),0);
+      return `<td>${c}</td><td class="points-cell">${p.toFixed(2)}</td>`;
+    }).join('')}</tr></tbody>`;
+  pt.innerHTML=phtml;
+
+  // TRENDI I PERFORMANCËS
+  const days=Object.keys(allDaysData).sort();
+  if(days.length>1){
+    const datasets=dists.map((dep,i)=>({
+      label:dep,borderColor:palette[i%palette.length],
+      backgroundColor:palette[i%palette.length]+'22',
+      tension:.3,borderWidth:2,pointRadius:3,
+      data:days.map(day=>{
+        const dd=allDaysData[day];
+        const p=dd.rows.reduce((a,r)=>a+(r.points[dep]||0),0);
+        const t=dd.ekipeRow?(dd.ekipeRow[dep]||0):0;
+        return t?+(p/t).toFixed(2):0;
+      })
+    }));
+    charts.effTrend=new Chart(document.getElementById('chartEffTrend'),{
+      type:'line',data:{labels:days,datasets},
+      options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom',labels:{boxWidth:12}}},
+        scales:{y:{beginAtZero:true,title:{display:true,text:'Pikë / Ekip'}}}}});
+  }
+}
+</script>
+</body>
+</html>
