@@ -273,6 +273,79 @@
 </main>
 
 <script>
+  // ========== AUTO-LOAD EXCEL FROM URL ==========
+const EXCEL_URL='Raporti ditor Korrik 2026 - Teams.xlsx'; // Emri i file-it në GitHub
+const EXCEL_INFO_ELEMENT='autoLoadInfo';
+
+async function autoLoadExcel(){
+  try{
+    // Shfaq mesazh loading
+    document.getElementById('empty').innerHTML=`
+      <div class="big">⏳</div>
+      <h2>Duke ngarkuar raportin...</h2>
+      <p>Ju lutem prisni pak sekonda</p>
+      <div style="margin-top:20px">
+        <div style="width:200px;height:4px;background:var(--panel2);border-radius:2px;margin:0 auto;overflow:hidden">
+          <div style="width:40%;height:100%;background:var(--grad);animation:loading 1.5s infinite"></div>
+        </div>
+      </div>
+      <style>@keyframes loading{0%{margin-left:-40%}100%{margin-left:100%}}</style>
+    `;
+    
+    const response=await fetch(EXCEL_URL);
+    if(!response.ok) throw new Error('Nuk u gjet skedari: '+EXCEL_URL);
+    
+    const buffer=await response.arrayBuffer();
+    const data=new Uint8Array(buffer);
+    workbook=XLSX.read(data,{type:'array'});
+    
+    // Parso të gjitha ditët
+    allDaysData={};
+    workbook.SheetNames.forEach(name=>{
+      if(/\d{2}\.\d{2}\.\d{4}/.test(name)){
+        const ws=workbook.Sheets[name];
+        const rows=XLSX.utils.sheet_to_json(ws,{header:1,defval:null,blankrows:false});
+        allDaysData[name]=parseReport(rows,name);
+      }
+    });
+    
+    // Popullo dropdown
+    const sel=document.getElementById('sheetSelect');
+    sel.innerHTML='';sel.style.display='inline-block';
+    workbook.SheetNames.forEach(n=>{
+      const o=document.createElement('option');o.value=n;o.textContent=n;sel.appendChild(o);
+    });
+    
+    const dated=workbook.SheetNames.find(n=>/\d{2}\.\d{2}\.\d{4}/.test(n));
+    const preferred=workbook.SheetNames.find(n=>n.toUpperCase().includes('TOTAL'))||dated||workbook.SheetNames[0];
+    sel.value=preferred;
+    buildDayList();
+    loadSheet(preferred);
+    
+    // Fsheh input-in e file-it, shfaq badge
+    document.getElementById('fileInput').style.display='none';
+    const badge=document.createElement('span');
+    badge.className='badge ok';
+    badge.innerHTML='🔴 LIVE · Auto-ngarkuar';
+    badge.style.marginRight='8px';
+    document.querySelector('.toolbar').insertBefore(badge,sel);
+    
+  }catch(err){
+    console.error('Gabim gjatë ngarkimit:',err);
+    document.getElementById('empty').innerHTML=`
+      <div class="big">⚠️</div>
+      <h2>Nuk u ngarkua automatikisht</h2>
+      <p style="color:var(--err)">${err.message}</p>
+      <p style="margin-top:20px">Mund ta importosh manualisht nga butoni "Choose File" më lart.</p>
+    `;
+  }
+}
+
+// Ekzekuto autoLoad kur ngarkohet faqja
+window.addEventListener('DOMContentLoaded',()=>{
+  // Prit që të ngarkohen bibliotekat
+  setTimeout(autoLoadExcel,500);
+});
 let workbook=null, currentData=null, allDaysData={}, charts={};
 let activeDistrict='__ALL__';
 let globalCoefficients={}; // {activityName: coefficient} - nga sheet 01.07.2026 kolona S
